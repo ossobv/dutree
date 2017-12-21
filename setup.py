@@ -28,7 +28,7 @@ if __name__ == '__main__':
         version=version,
         packages=['dutree'],
         entry_points={'console_scripts': ['dutree = dutree.dutree:main']},
-        description='quick and efficient disk usage scanner',
+        description='Disk usage summary, showing large dirs/files',
         long_description=('\n\n\n'.join(long_descriptions)),
         author='Walter Doekes, OSSO B.V.',
         author_email='wjdoekes+dutree@osso.nl',
