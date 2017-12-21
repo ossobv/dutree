@@ -316,7 +316,7 @@ def human(value):
     return '{}   B'.format(value)
 
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) != 2:
         sys.stderr.write('Usage: dutree PATH\n')
         sys.exit(1)
@@ -336,3 +336,7 @@ if __name__ == '__main__':
     sys.stdout.write('   -----\n')
     size = tree.size()
     sys.stdout.write(' {0:>7s}  TOTAL ({1})\n'.format(human(size), size))
+
+
+if __name__ == '__main__':
+    main()

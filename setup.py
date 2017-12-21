@@ -21,12 +21,13 @@ if __name__ == '__main__':
     long_descriptions = []
     with open(join(dirname(__file__), 'README.rst')) as file:
         long_descriptions.append(file.read())
-    version = '0.1'
+    version = '1.0'
 
     setup(
         name='dutree',
         version=version,
-        scripts=['dutree'],
+        packages=['dutree'],
+        entry_points={'console_scripts': ['dutree = dutree.dutree:main']},
         description='quick and efficient disk usage scanner',
         long_description=('\n\n\n'.join(long_descriptions)),
         author='Walter Doekes, OSSO B.V.',
