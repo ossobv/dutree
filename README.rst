@@ -7,7 +7,8 @@ Example usage::
 
     $ dutree /srv
 
-Annotated output, where only paths of >4G are shown::
+Annotated output, where only paths of >5% of the total size are shown
+(4GB for this dataset)::
 
      12.1 G  /srv/data/audiofiles/
               ^-- audiofiles contains files/dirs with a total of 12.1G

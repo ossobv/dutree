@@ -1,5 +1,5 @@
 # dutree -- a quick and memory efficient disk usage scanner
-# Copyright (C) 2017  Walter Doekes, OSSO B.V.
+# Copyright (C) 2017,2018  Walter Doekes, OSSO B.V.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

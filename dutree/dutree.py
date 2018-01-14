@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # dutree -- a quick and memory efficient disk usage scanner
-# Copyright (C) 2017  Walter Doekes, OSSO B.V.
+# Copyright (C) 2017,2018  Walter Doekes, OSSO B.V.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,8 @@
 #
 #     $ dutree /srv
 #
-# Annotated output, where only paths of >4G are shown:
+# Annotated output, where only paths of >5% of the total size are shown
+# (4GB for this dataset)::
 #
 #      12.1 G  /srv/data/audiofiles/
 #               ^-- audiofiles contains files/dirs with a total of 12.1G
@@ -219,9 +220,17 @@ class DuScan:
     "Disk Usage Tree scanner"
 
     def __init__(self, path):
-        assert not path.endswith('/'), path
-        self._path = path
+        self._path = self._normpath(path)
         self._tree = None
+
+    def _normpath(self, path):
+        "Return path normalized for duscan usage: no trailing slash."
+        if path == '/':
+            path = '/.'
+        elif path.endswith('/'):
+            path = path[:-1]
+        assert not path.endswith('/'), path
+        return path
 
     def scan(self):
         assert self._tree is None
@@ -322,11 +331,6 @@ def main():
         sys.exit(1)
 
     path = sys.argv[1]
-    if path == '/':
-        path = '/.'
-    elif path.endswith('/'):
-        path = path[:-1]
-
     scanner = DuScan(path)
     tree = scanner.scan()
     items = tree.get_leaves()
