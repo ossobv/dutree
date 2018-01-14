@@ -48,7 +48,7 @@ class DuScanTestMixin(object):
         return ret
 
 
-class DuScanTest15(DuScanTestMixin, TestCase):
+class DuScan14Test(DuScanTestMixin, TestCase):
     def setUp(self):
         self.fs = GeneratedFilesystem(seed=1, maxdepth=4)
         self.tree = self.duscan_tree(self.fs, '/')
@@ -57,15 +57,14 @@ class DuScanTest15(DuScanTestMixin, TestCase):
         fs_size = self.fs.get_content_size('/')
         dutree_size = self.tree.size()
 
-        self.debug('DuScanTest15.test_filesize', fs_size)
+        self.debug('DuScanTest14.test_filesize', fs_size)
         self.assertEqual(dutree_size, fs_size)
         self.assertEqual(dutree_size, 2053393838542)
         self.assertEqual(dutree.human(dutree_size), '1.9 T')
 
     def test_leaves(self):
         expected = [
-            # ISSUE #2: "/0.d/02.d/*" should be without Asterisk.
-            ['/0.d/02.d/*', 106577108100],
+            ['/0.d/02.d/', 106577108100],  # not "/0.d/02.d/*"
             ['/0.d/05.d/', 113273338762],
             ['/0.d/15.d/', 122711365675],
             ['/0.d/*', 687973286945],
@@ -83,7 +82,7 @@ class DuScanTest15(DuScanTestMixin, TestCase):
         self.assertEquals(self.fs.stat('/1.d/13.d/15.txt').size, 22344)
 
 
-class DuScanTest15Delete(DuScanTestMixin, TestCase):
+class DuScan14DeleteTest(DuScanTestMixin, TestCase):
     def test_handle_deleted(self):
         fs = GeneratedFilesystem(seed=1, maxdepth=4)
         deleted_size = 0
@@ -104,6 +103,27 @@ class DuScanTest15Delete(DuScanTestMixin, TestCase):
 
         self.assertEqual(dutree_size, fs_size)
         self.assertEqual(dutree_size, 2053393838542 - deleted_size)
+
+
+class DuScan64Test(DuScanTestMixin, TestCase):
+    def setUp(self):
+        self.fs = GeneratedFilesystem(seed=6, maxdepth=4)
+        self.tree = self.duscan_tree(self.fs, '/')
+
+    def test_leaves(self):
+        expected = [
+            ['/00.d/', 962283588169],
+            ['/01.d/', 609253676265],
+            ['/02.d/', 1154398475211],  # not "/02.d/*"
+            ['/03.d/', 581440911832],
+            ['/04.d/', 644318151446],
+            ['/05.d/', 762422243930],
+            ['/06.d/', 707913056679],
+            ['/07.d/', 531731374526],
+            ['/08.d/', 891915794716],
+            ['/14.d/', 449450186015],
+            ['/*', 1050999789708]]
+        self.assertEquals(self.leaves_as_list(self.tree), expected)
 
 
 if __name__ == '__main__':

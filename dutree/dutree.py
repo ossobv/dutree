@@ -94,7 +94,7 @@ class DuNode:
 
     def name(self):
         if self._isdir is None:
-            return self._path.split('\xff')[0] + '*'  # remove sorting FF
+            return self._path.split('\xff')[0] + '*'  # remove the sorting FF
         elif self._isdir:
             return self._path + '/'
         return self._path
@@ -134,10 +134,24 @@ class DuNode:
                 prune_size += size
             else:
                 keep_nodes.append(node)
+
+        # Last "leftover" node? Merge with parent.
+        if len(keep_nodes) == 1 and keep_nodes[-1]._isdir is None:
+            prune_size += keep_nodes[-1]._filesize
+            keep_nodes = []
+
         if prune_size:
-            if keep_nodes and keep_nodes[-1]._isdir is None:
+            if not keep_nodes:
+                # The only node to keep, no "leftovers" here. Move data
+                # to the parent.
+                keep_nodes = None
+                assert self._isdir and self._filesize is None
+                self._filesize = prune_size
+            elif keep_nodes and keep_nodes[-1]._isdir is None:
+                # There was already a leftover node. Add the new leftovers.
                 keep_nodes[-1]._filesize += prune_size
             else:
+                # Create a new leftover node.
                 keep_nodes.append(DuNode.new_leftovers(self._path, prune_size))
 
         # Update nodes and do the actual assertion.
@@ -197,7 +211,7 @@ class DuNode:
     def get_leaves(self):
         "Return a sorted leaves: only items with fixed file size."
         leaves = self._get_leaves()
-        leaves.sort(key=(lambda x: x._path))
+        leaves.sort(key=(lambda x: x._path))  # FF sorts "mixed" last
         return leaves
 
     def _get_leaves(self):
