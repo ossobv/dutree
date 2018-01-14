@@ -136,28 +136,41 @@ class GeneratedFilesystem:
         assert path.startswith('/'), path
         return path
 
-    def get_total_size(self, path, node=None):
-        if not node:
-            path = self._normpath(path)
+    def _get_node(self, path):
+        try:
             node = self._cache_dict[path]
+        except KeyError:
+            raise OSError(2, "No such file or directory: {0!r}".format(path))
+        return node
 
+    def get_content_size(self, path):
+        "Return size of files/dirs contents excluding parent node."
+        node = self._get_node(path)
+        return self._get_content_size(node) - node.size
+
+    def _get_content_size(self, node):
         size = node.size
         size += sum(i.size for i in node.files)
         for dir_ in node.dirs:
-            size += self.get_total_size(path, dir_)
+            size += self._get_content_size(dir_)
         return size
 
+    def hide_from_stat(self, path):
+        """'Delete' a file, so it will turn up in the listdir, but fail
+        on stat.
+
+        This is used so check that we cope with listdir/stat races.
+        """
+        del self._cache_dict[path]
+
     def listdir(self, path):
-        path = self._normpath(path)
-        node = self._cache_dict[path]
+        node = self._get_node(path)
         return (
             [i.name for i in node.dirs] +
             [i.name for i in node.files])
 
     def stat(self, path):
-        path = self._normpath(path)
-        node = self._cache_dict[path]
-        return node
+        return self._get_node(path)
 
     def walk(self, path):
         path = self._normpath(path)
@@ -182,7 +195,7 @@ if __name__ == '__main__':
     from textwrap import wrap
     fs = GeneratedFilesystem(seed=3, maxdepth=2)
     print('GeneratedFilesystem:')
-    print('  size =', fs.get_total_size('/'))
+    print('  size =', fs.get_content_size('/'))
     for name, dirs, files in fs.walk('/'):
         print(name)
         print('  ' + '\n  '.join(wrap(' '.join(files), 70)))

@@ -54,8 +54,7 @@ class DuScanTest15(DuScanTestMixin, TestCase):
         self.tree = self.duscan_tree(self.fs, '/')
 
     def test_filesize(self):
-        # Deduct '/' size because dutree doesn't count it either.
-        fs_size = self.fs.get_total_size('/') - self.fs.stat('/').size
+        fs_size = self.fs.get_content_size('/')
         dutree_size = self.tree.size()
 
         self.debug('DuScanTest15.test_filesize', fs_size)
@@ -76,6 +75,35 @@ class DuScanTest15(DuScanTestMixin, TestCase):
             ['/1.d/*', 672920941814],
             ['/*', 1937174334]]
         self.assertEquals(self.leaves_as_list(self.tree), expected)
+
+    def test_leaf_size(self):
+        self.assertEquals(self.fs.get_content_size('/0.d/05.d'), 113273338762)
+
+    def test_sample_file(self):
+        self.assertEquals(self.fs.stat('/1.d/13.d/15.txt').size, 22344)
+
+
+class DuScanTest15Delete(DuScanTestMixin, TestCase):
+    def test_handle_deleted(self):
+        fs = GeneratedFilesystem(seed=1, maxdepth=4)
+        deleted_size = 0
+
+        # Entire dir.
+        deleted_size += (
+            fs.get_content_size('/0.d/05.d') +
+            fs.stat('/0.d/05.d').size)
+        fs.hide_from_stat('/0.d/05.d')
+        # Single file.
+        deleted_size += fs.stat('/1.d/13.d/15.txt').size
+        fs.hide_from_stat('/1.d/13.d/15.txt')
+
+        # Scan.
+        tree = self.duscan_tree(fs, '/')
+        fs_size = fs.get_content_size('/') - deleted_size
+        dutree_size = tree.size()
+
+        self.assertEqual(dutree_size, fs_size)
+        self.assertEqual(dutree_size, 2053393838542 - deleted_size)
 
 
 if __name__ == '__main__':

@@ -51,6 +51,7 @@
 # contents. This explains any discrepancies with `du -sb` output.
 #
 import sys
+import warnings
 
 from os import listdir, lstat
 from stat import S_ISDIR, S_ISREG
@@ -254,7 +255,15 @@ class DuScan:
 
         for file_ in listdir(path or '/'):
             fn = path + '/' + file_
-            st = lstat(fn)
+            try:
+                st = lstat(fn)
+            except OSError as e:
+                # Could be deleted:
+                #   [Errno 2] No such file or directory: '/proc/14532/fdinfo/3'
+                # Could be EPERM:
+                #   [Errno 13] Permission denied: '/run/user/1000/gvfs'
+                warnings.warn(str(e))
+                continue
 
             if S_ISREG(st.st_mode):
                 size = st.st_size
