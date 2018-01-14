@@ -21,7 +21,7 @@ if __name__ == '__main__':
     long_descriptions = []
     with open(join(dirname(__file__), 'README.rst')) as file:
         long_descriptions.append(file.read())
-    version = '1.1'
+    version = '1.2'
 
     setup(
         name='dutree',

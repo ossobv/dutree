@@ -1,14 +1,19 @@
 dutree :: Disk usage summary
 ============================
 
-*dutree* shows a summary of the directories/files which take up the most space.
+*dutree* shows a summary of the directories/files which take up the most
+space.
+
+Instead of showing *only the root of the files* with sizes, or the
+details of *every file*, it shows *only the paths taking up the most
+space*.
 
 Example usage::
 
     $ dutree /srv
 
 Annotated output, where only paths of >5% of the total size are shown
-(4GB for this dataset)::
+(which is about 4GB for this dataset)::
 
      12.1 G  /srv/data/audiofiles/
               ^-- audiofiles contains files/dirs with a total of 12.1G
@@ -21,17 +26,17 @@ Annotated output, where only paths of >5% of the total size are shown
       7.8 G  /srv/data/*
                ^-- data contains more files/directories than shown above
                    but those that don't total above 4G are merged into
-                   this "leftover" node. That includes /twinfield_invoices/
-                   except for the /1/ subdirectory which already has its
-                   individual listing.
+                   this "leftover" node. that includes everything in
+                   /twinfield_invoices/ except for the /1/ subdirectory
+                   which has its individual listing above.
      32   B  /srv/*
-               ^-- there was only /data/ in /srv/, but the directory itself
-                   also takes up a tiny bit of space
+               ^-- only /data/ is in /srv/, but the directory itself also
+                   takes up a tiny bit of space
       -----
      80.6 G  TOTAL (86558511658)
 
-**NOTE**: The directories do not count the size of themselves, only of their
-contents. This explains any discrepancies with ``du -sb`` output.
+**NOTE**: The directories do not count the size of themselves, only of
+their contents. This explains any discrepancies with ``du -sb`` output.
 
 
 Library usage::
