@@ -280,7 +280,17 @@ class DuScan:
                 continue
 
             if S_ISREG(st.st_mode):
-                size = st.st_size
+                if st.st_blocks == 0:
+                    # Pseudo-files, like the one in /proc have 0-block
+                    # files. We definitely don't want to count those,
+                    # like /proc/kcore. This does mean that we won't
+                    # count sparse files of 0 non-zero blocks either
+                    # anymoore. I think we can live with that.
+                    size = 0
+                else:
+                    # We always count apparent size, not block size.
+                    size = st.st_size
+
                 if size >= fraction:
                     child_node = DuNode.new_file(fn, size)
                     children.append(child_node)

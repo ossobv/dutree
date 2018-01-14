@@ -29,6 +29,10 @@ class Node(object):
         self.size = size
 
     @property
+    def st_blocks(self):  # for stat
+        return ((self.size + 511) >> 9)
+
+    @property
     def st_size(self):  # for stat
         return self.size
 
