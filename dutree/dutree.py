@@ -226,7 +226,7 @@ class DuScan:
     def _normpath(self, path):
         "Return path normalized for duscan usage: no trailing slash."
         if path == '/':
-            path = '/.'
+            path = ''
         elif path.endswith('/'):
             path = path[:-1]
         assert not path.endswith('/'), path
@@ -252,7 +252,7 @@ class DuScan:
         pruned_one = False          # did we prune at least one dir
         mixed_total = 0             # "rest of the dir", add to this node
 
-        for file_ in listdir(path):
+        for file_ in listdir(path or '/'):
             fn = path + '/' + file_
             st = lstat(fn)
 
