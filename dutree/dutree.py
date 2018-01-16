@@ -110,22 +110,29 @@ class DuNode:
 
     def prune_if_smaller_than(self, small_size):
         "Prune/merge all nodes that are smaller than small_size."
-
-        if self._filesize is not None:
-            return
-
-        total_size = self.size()
-        if total_size < small_size:
-            self._filesize = total_size
-            del self._nodes
+        if self._prune_all_if_small(small_size):
             return
 
         for node in self._nodes:
             node.prune_if_smaller_than(small_size)
 
-        # Loop over the still existing nodes and check if we can merge
-        # *some* of the nodes, while keeping others.
+        self._prune_some_if_small(small_size)
 
+    def _prune_all_if_small(self, small_size):
+        "Return True and delete children if small enough."
+        if self._filesize is not None:
+            return True
+
+        total_size = self.size()
+        if total_size < small_size:
+            self._filesize = total_size
+            del self._nodes
+            return True
+
+        return False
+
+    def _prune_some_if_small(self, small_size):
+        "Merge some nodes in the directory, whilst keeping others."
         # Assert that we're not messing things up.
         prev_size = self.size()
 
@@ -253,8 +260,9 @@ class DuScan:
     def scan(self):
         assert self._tree is None
         self._tree = DuNode.new_dir(self._path)
-        new_total, new_fraction, keep_node, leftover_bytes = self._scan(
-            self._tree, self._path, 0)
+        self._subtotal = 0
+        leftover_bytes, new_fraction, keep_node = self._scan(
+            self._path, self._tree)
         assert keep_node and not leftover_bytes, (keep_node, leftover_bytes)
 
         # Do another prune run, since the fraction size has grown during the
@@ -263,9 +271,8 @@ class DuScan:
         self._tree.merge_upwards_if_smaller_than(new_fraction)
         return self._tree
 
-    def _scan(self, parent_node, path, subtotal):
-        self_scan = self._scan      # local cache
-        fraction = subtotal // 20   # initialize fraction
+    def _scan(self, path, parent_node):
+        fraction = self._subtotal // 20  # initialize fraction
         children = []               # large separate child nodes
         pruned_one = False          # did we prune at least one dir
         mixed_total = 0             # "rest of the dir", add to this node
@@ -297,18 +304,18 @@ class DuScan:
                 if size >= fraction:
                     child_node = DuNode.new_file(fn, size)
                     children.append(child_node)
-                    subtotal += child_node.size()
+                    self._subtotal += child_node.size()
                 else:
                     # The file is too small and it doesn't get its own
                     # node. Count it on this node.
                     mixed_total += size
-                    subtotal += size
+                    self._subtotal += size
 
             elif S_ISDIR(st.st_mode):
                 child_node = DuNode.new_dir(fn)
 
-                subtotal, fraction, keep_node, leftover_bytes = self_scan(
-                    child_node, fn, subtotal)
+                leftover_bytes, fraction, keep_node = self._scan(
+                    fn, child_node)
                 if keep_node:
                     assert not leftover_bytes, leftover_bytes
                     children.append(child_node)
@@ -323,16 +330,18 @@ class DuScan:
                 # consumes less system time, and (c) it has no python
                 # overhead.
                 mixed_total += st.st_size
-                subtotal += st.st_size
+                self._subtotal += st.st_size
 
             else:
                 # Also count the whatever-file-this-may-be size (symlink?).
                 mixed_total += st.st_size
-                subtotal += st.st_size
+                self._subtotal += st.st_size
 
             # Recalculate fraction based on updated subtotal.
-            fraction = subtotal // 20
+            fraction = self._subtotal // 20
 
+        # Do we have children or a total that's large enough: keep this
+        # node.
         if children or mixed_total >= fraction:
             parent_node.add_branches(*children)
             if children and pruned_one:
@@ -345,7 +354,8 @@ class DuScan:
         else:
             keep_node = False
 
-        return subtotal, fraction, keep_node, mixed_total
+        # Leftovers, the new fraction and whether to keep the child.
+        return mixed_total, fraction, keep_node
 
 
 def human(value):
