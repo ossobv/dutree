@@ -27,6 +27,6 @@
 #     tree = scanner.scan()
 #     print(tree.size())
 #
-from dutree import DuScan as Scanner
+from .dutree import DuScan as Scanner
 
 __all__ = ('Scanner',)
