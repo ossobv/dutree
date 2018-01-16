@@ -218,8 +218,17 @@ class DuNode:
             ret.extend(node._find_small_nodes(small_size, parents + (self,)))
         return ret
 
+    def as_tree(self):
+        "Return the nodes as a list of lists."
+        if self._filesize is not None:
+            return [self]
+        ret = [self]
+        for node in self._nodes:
+            ret.append(node.as_tree())
+        return ret
+
     def get_leaves(self):
-        "Return a sorted leaves: only items with fixed file size."
+        "Return a sorted leaves: only nodes with fixed file size."
         leaves = self._get_leaves()
         leaves.sort(key=(lambda x: x._path))  # FF sorts "mixed" last
         return leaves
@@ -229,9 +238,8 @@ class DuNode:
             return [self]
 
         ret = []
-        if self._filesize is None:
-            for node in self._nodes:
-                ret.extend(node._get_leaves())
+        for node in self._nodes:
+            ret.extend(node._get_leaves())
         return ret
 
     def __repr__(self):
@@ -344,11 +352,15 @@ class DuScan:
         # node.
         if children or mixed_total >= fraction:
             parent_node.add_branches(*children)
-            if children and pruned_one:
-                child_node = DuNode.new_leftovers(path, mixed_total)
+            if children:
+                if pruned_one:
+                    child_node = DuNode.new_leftovers(path, mixed_total)
+                else:
+                    child_node = DuNode.new_dir(path, mixed_total)
+                parent_node.add_branches(child_node)
             else:
-                child_node = DuNode.new_dir(path, mixed_total)
-            parent_node.add_branches(child_node)
+                parent_node._filesize = mixed_total
+                del parent_node._nodes
             mixed_total = 0
             keep_node = True
         else:
@@ -379,10 +391,9 @@ def main():
     path = sys.argv[1]
     scanner = DuScan(path)
     tree = scanner.scan()
-    items = tree.get_leaves()
-    for item in items:
+    for leaf in tree.get_leaves():
         sys.stdout.write(
-            ' {0:>7s}  {1}\n'.format(human(item.size()), item.name()))
+            ' {0:>7s}  {1}\n'.format(human(leaf.size()), leaf.name()))
     sys.stdout.write('   -----\n')
     size = tree.size()
     sys.stdout.write(' {0:>7s}  TOTAL ({1})\n'.format(human(size), size))

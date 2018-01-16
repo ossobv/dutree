@@ -41,18 +41,18 @@ their contents. This explains any discrepancies with ``du -sb`` output.
 
 Library usage::
 
-     >>> from dutree import Scanner
-     >>> scanner = Scanner('/srv')
-     >>> tree = scanner.scan()
-     >>> tree.size()
-     86558511658
+    >>> from dutree import Scanner
+    >>> scanner = Scanner('/srv')
+    >>> tree = scanner.scan()
+    >>> tree.size()
+    86558511658
 
-     >>> len(tree.get_leaves())
-     7
+    >>> len(tree.get_leaves())
+    7
 
-     >>> leaf0 = tree.get_leaves()[0]
-     >>> leaf0.name()
-     '/srv/data/audiofiles/'
+    >>> leaf0 = tree.get_leaves()[0]
+    >>> leaf0.name()
+    '/srv/data/audiofiles/'
 
-     >>> leaf0.size() / (1024.0 * 1024 * 1024)
-     12.092280263081193
+    >>> leaf0.size() / (1024.0 * 1024 * 1024)
+    12.092280263081193

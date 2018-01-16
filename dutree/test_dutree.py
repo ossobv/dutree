@@ -26,11 +26,15 @@ import dutree
 
 
 class DuScanTestMixin(object):
+    maxDiff = None
+
+    @staticmethod
     def debug(self, *args):
         # print(*args)
         pass
 
-    def duscan_tree(self, fs, path):
+    @staticmethod
+    def duscan_tree(fs, path):
         # Mock.
         dutree.listdir = fs.listdir
         dutree.lstat = fs.stat
@@ -40,18 +44,28 @@ class DuScanTestMixin(object):
         tree = scanner.scan()
         return tree
 
-    def leaves_as_list(self, tree):
+    @staticmethod
+    def leaves_as_list(tree):
         ret = []
         items = tree.get_leaves()
         for item in items:
-            ret.append([item.name(), item.size()])
+            ret.append((item.name(), item.size()))
         return ret
+
+    @staticmethod
+    def tree_as_list(tree):
+        def _as_list(it):
+            if isinstance(it, list):
+                return [_as_list(i) for i in it]
+            return (it.name(), it.size())
+        return _as_list(tree.as_tree())
 
 
 class DuScan14Test(DuScanTestMixin, TestCase):
-    def setUp(self):
-        self.fs = GeneratedFilesystem(seed=1, maxdepth=4)
-        self.tree = self.duscan_tree(self.fs, '/')
+    @classmethod
+    def setUpClass(cls):
+        cls.fs = GeneratedFilesystem(seed=1, maxdepth=4)
+        cls.tree = cls.duscan_tree(cls.fs, '/')
 
     def test_filesize(self):
         fs_size = self.fs.get_content_size('/')
@@ -64,16 +78,32 @@ class DuScan14Test(DuScanTestMixin, TestCase):
 
     def test_leaves(self):
         expected = [
-            ['/0.d/02.d/', 106577108100],  # not "/0.d/02.d/*"
-            ['/0.d/05.d/', 113273338762],
-            ['/0.d/15.d/', 122711365675],
-            ['/0.d/*', 687973286945],
-            ['/1.d/00.d/', 125037824539],
-            ['/1.d/11.d/', 106972774810],
-            ['/1.d/13.d/', 115990023563],
-            ['/1.d/*', 672920941814],
-            ['/*', 1937174334]]
+            ('/0.d/02.d/', 106577108100),  # not "/0.d/02.d/*"
+            ('/0.d/05.d/', 113273338762),
+            ('/0.d/15.d/', 122711365675),
+            ('/0.d/*', 687973286945),
+            ('/1.d/00.d/', 125037824539),
+            ('/1.d/11.d/', 106972774810),
+            ('/1.d/13.d/', 115990023563),
+            ('/1.d/*', 672920941814),
+            ('/*', 1937174334)]
         self.assertEquals(self.leaves_as_list(self.tree), expected)
+
+    def test_tree(self):
+        expected = [
+            ('/', 2053393838542),
+            [('/0.d/', 1030535099482),
+             [('/0.d/02.d/', 106577108100)],
+             [('/0.d/05.d/', 113273338762)],
+             [('/0.d/15.d/', 122711365675)],
+             [('/0.d/*', 687973286945)]],
+            [('/1.d/', 1020921564726),
+             [('/1.d/00.d/', 125037824539)],
+             [('/1.d/11.d/', 106972774810)],
+             [('/1.d/13.d/', 115990023563)],
+             [('/1.d/*', 672920941814)]],
+            [('/*', 1937174334)]]
+        self.assertEquals(self.tree_as_list(self.tree), expected)
 
     def test_leaf_size(self):
         self.assertEquals(self.fs.get_content_size('/0.d/05.d'), 113273338762)
@@ -106,25 +136,41 @@ class DuScan14DeleteTest(DuScanTestMixin, TestCase):
 
 
 class DuScan64Test(DuScanTestMixin, TestCase):
-    def setUp(self):
-        self.fs = GeneratedFilesystem(seed=6, maxdepth=4)
-        self.tree = self.duscan_tree(self.fs, '/')
+    @classmethod
+    def setUpClass(cls):
+        cls.fs = GeneratedFilesystem(seed=6, maxdepth=4)
+        cls.tree = cls.duscan_tree(cls.fs, '/')
 
     def test_leaves(self):
         expected = [
-            ['/00.d/', 962283588169],
-            ['/01.d/', 609253676265],
-            ['/02.d/', 1154398475211],  # not "/02.d/*"
-            ['/03.d/', 581440911832],
-            ['/04.d/', 644318151446],
-            ['/05.d/', 762422243930],
-            ['/06.d/', 707913056679],
-            ['/07.d/', 531731374526],
-            ['/08.d/', 891915794716],
-            ['/14.d/', 449450186015],
-            ['/*', 1050999789708]]
+            ('/00.d/', 962283588169),
+            ('/01.d/', 609253676265),
+            ('/02.d/', 1154398475211),  # not "/02.d/*"
+            ('/03.d/', 581440911832),
+            ('/04.d/', 644318151446),
+            ('/05.d/', 762422243930),
+            ('/06.d/', 707913056679),
+            ('/07.d/', 531731374526),
+            ('/08.d/', 891915794716),
+            ('/14.d/', 449450186015),
+            ('/*', 1050999789708)]
         self.assertEquals(self.leaves_as_list(self.tree), expected)
 
+    def test_tree(self):
+        expected = [
+            ('/', 8346127248497),
+            [('/00.d/', 962283588169)],
+            [('/01.d/', 609253676265)],
+            [('/02.d/', 1154398475211)],
+            [('/03.d/', 581440911832)],
+            [('/04.d/', 644318151446)],
+            [('/05.d/', 762422243930)],
+            [('/06.d/', 707913056679)],
+            [('/07.d/', 531731374526)],
+            [('/08.d/', 891915794716)],
+            [('/14.d/', 449450186015)],
+            [('/*', 1050999789708)]]
+        self.assertEquals(self.tree_as_list(self.tree), expected)
 
 if __name__ == '__main__':
     main()
