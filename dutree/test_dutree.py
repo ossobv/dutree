@@ -61,7 +61,7 @@ class DuScanTestMixin(object):
         return _as_list(tree.as_tree())
 
 
-class DuScan14Test(DuScanTestMixin, TestCase):
+class DuScanSeed1Depth4Test(DuScanTestMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         cls.fs = GeneratedFilesystem(seed=1, maxdepth=4)
@@ -71,7 +71,7 @@ class DuScan14Test(DuScanTestMixin, TestCase):
         fs_size = self.fs.get_content_size('/')
         dutree_size = self.tree.size()
 
-        self.debug('DuScanTest14.test_filesize', fs_size)
+        self.debug('DuScanSeed1Depth4Test.test_filesize', fs_size)
         self.assertEqual(dutree_size, fs_size)
         self.assertEqual(dutree_size, 2053393838542)
         self.assertEqual(dutree.human(dutree_size), '1.9 T')
@@ -112,7 +112,7 @@ class DuScan14Test(DuScanTestMixin, TestCase):
         self.assertEquals(self.fs.stat('/1.d/13.d/15.txt').size, 22344)
 
 
-class DuScan14DeleteTest(DuScanTestMixin, TestCase):
+class DuScanCopeWithDeletionTest(DuScanTestMixin, TestCase):
     def test_handle_deleted(self):
         fs = GeneratedFilesystem(seed=1, maxdepth=4)
         deleted_size = 0
@@ -135,7 +135,7 @@ class DuScan14DeleteTest(DuScanTestMixin, TestCase):
         self.assertEqual(dutree_size, 2053393838542 - deleted_size)
 
 
-class DuScan64Test(DuScanTestMixin, TestCase):
+class DuScanNoLonelyStarTest(DuScanTestMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         cls.fs = GeneratedFilesystem(seed=6, maxdepth=4)
@@ -171,6 +171,81 @@ class DuScan64Test(DuScanTestMixin, TestCase):
             [('/14.d/', 449450186015)],
             [('/*', 1050999789708)]]
         self.assertEquals(self.tree_as_list(self.tree), expected)
+
+
+class DuScanNoSlashAndStarTest(DuScanTestMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.fs = GeneratedFilesystem(seed=206, maxdepth=2)
+        cls.tree = cls.duscan_tree(cls.fs, '/')
+
+    def test_leaves(self):
+        expected = [
+            # not first a ('/', 54139),
+            ('/00.txt', 55182),
+            ('/01.txt', 63709),
+            ('/03.txt', 42615),
+            ('/04.txt', 48615),
+            ('/05.txt', 44506),
+            ('/07.txt', 44861),
+            ('/11.txt', 45615),
+            ('/14.txt', 53575),
+            ('/17.txt', 49326),
+            ('/18.txt', 53280),
+            ('/20.txt', 65273),
+            ('/23.txt', 45433),
+            ('/*', 166955)]
+        self.assertEquals(self.leaves_as_list(self.tree), expected)
+
+
+class DuScanFindBadExamplesTest(DuScanTestMixin, TestCase):
+    def is_flawed(self, dirs):
+        lastdir = None
+        for dir_ in dirs:
+            if dir_.endswith('/'):
+                lastdir = dir_
+                continue
+            if not lastdir or not dir_.startswith(lastdir):
+                lastdir = None
+                continue
+            return True
+        return False
+
+    def test_is_not_flawed(self):
+        good_example = (
+            '/var/lib/apt/lists/somelist',
+            '/var/lib/apt/lists/*',
+            '/var/lib/mysql/ib_logfile0',
+            '/var/lib/mysql/*',
+            '/var/lib/smartmontools/',
+            '/var/lib/*',
+        )
+        self.assertFalse(self.is_flawed(good_example))
+
+    def test_is_flawed(self):
+        bad_example = (
+            'data/mysql/fri/',
+            'data/mysql/mon/',  # this should not be here..
+            'data/mysql/mon/export_statistieken.ibd.qp',
+            'data/mysql/mon/log_vacaturegegevens.ibd.qp',
+            'data/mysql/mon/*',
+            'data/*',
+        )
+        self.assertTrue(self.is_flawed(bad_example))
+
+    def test_find_something(self):
+        if False:
+            # depth=4: 57, 176
+            # depth=3: 28, 57, 176, 206(!)
+            for seed in range(1, 1000):
+                print(seed)
+                fs = GeneratedFilesystem(seed=seed, maxdepth=1)
+                tree = self.duscan_tree(fs, '/')
+                dirs = [dir_ for (dir_, size) in self.leaves_as_list(tree)]
+                if self.is_flawed(dirs):
+                    print(seed, dirs)
+                    break
+
 
 if __name__ == '__main__':
     main()
