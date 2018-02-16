@@ -282,7 +282,6 @@ class DuScan:
     def _scan(self, path, parent_node):
         fraction = self._subtotal // 20  # initialize fraction
         children = []               # large separate child nodes
-        pruned_one = False          # did we prune at least one dir
         mixed_total = 0             # "rest of the dir", add to this node
 
         for file_ in listdir(path or '/'):
@@ -328,7 +327,6 @@ class DuScan:
                     assert not leftover_bytes, leftover_bytes
                     children.append(child_node)
                 else:
-                    pruned_one = True
                     mixed_total += leftover_bytes
 
                 # Also count the directory listing size to get the same
@@ -353,10 +351,7 @@ class DuScan:
         if children or mixed_total >= fraction:
             parent_node.add_branches(*children)
             if children:
-                if pruned_one:
-                    child_node = DuNode.new_leftovers(path, mixed_total)
-                else:
-                    child_node = DuNode.new_dir(path, mixed_total)
+                child_node = DuNode.new_leftovers(path, mixed_total)
                 parent_node.add_branches(child_node)
             else:
                 parent_node._filesize = mixed_total
