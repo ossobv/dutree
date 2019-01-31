@@ -1,5 +1,5 @@
 # dutree -- a quick and memory efficient disk usage scanner
-# Copyright (C) 2017,2018  Walter Doekes, OSSO B.V.
+# Copyright (C) 2017,2018,2019  Walter Doekes, OSSO B.V.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,8 +24,8 @@
 #
 #     >>> from dutree import Scanner
 #     >>> scanner = Scanner('/srv')
-#     >>> tree = scanner.scan()
-#     >>> tree.size()
+#     >>> tree = scanner.scan(use_apparent_size=True)
+#     >>> tree.app_size()
 #     86558511658
 #
 #     >>> len(tree.get_leaves())
@@ -35,7 +35,7 @@
 #     >>> leaf0.name()
 #     '/srv/data/audiofiles/'
 #
-#     >>> leaf0.size() / (1024.0 * 1024 * 1024)
+#     >>> leaf0.app_size() / (1024.0 * 1024 * 1024)
 #     12.092280263081193
 #
 from .dutree import DuScan as Scanner

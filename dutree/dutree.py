@@ -53,6 +53,9 @@
 # **NOTE**: The directories do not count the size of themselves, only of
 # their contents. This explains any discrepancies with ``du -sb`` output.
 #
+# **NOTE**: On filesystems with built-in compression (like ZFS) or with many
+# sparse files, you may want to check the --count-blocks option.
+#
 import sys
 import warnings
 
@@ -137,30 +140,32 @@ class DuNode:
         self._use_size = use_size
         self._nodes = None
 
-    def prune_if_smaller_than(self, small_size):
+    def prune_if_smaller_than(self, small_size, a_or_u):
         "Prune/merge all nodes that are smaller than small_size."
-        if self._prune_all_if_small(small_size):
+        if self._prune_all_if_small(small_size, a_or_u):
             return
 
         for node in self._nodes:
-            node.prune_if_smaller_than(small_size)
+            node.prune_if_smaller_than(small_size, a_or_u)
 
-        self._prune_some_if_small(small_size)
+        self._prune_some_if_small(small_size, a_or_u)
 
-    def _prune_all_if_small(self, small_size):
+    def _prune_all_if_small(self, small_size, a_or_u):
         "Return True and delete children if small enough."
         if self._nodes is None:
             return True
 
-        # TODO: select app vs use
-        total_size = self.app_size()
+        total_size = (self.app_size() if a_or_u else self.use_size())
         if total_size < small_size:
-            self._set_size(total_size, self.use_size())
+            if a_or_u:
+                self._set_size(total_size, self.use_size())
+            else:
+                self._set_size(self.app_size(), total_size)
             return True
 
         return False
 
-    def _prune_some_if_small(self, small_size):
+    def _prune_some_if_small(self, small_size, a_or_u):
         "Merge some nodes in the directory, whilst keeping others."
         # Assert that we're not messing things up.
         prev_app_size = self.app_size()
@@ -170,11 +175,14 @@ class DuNode:
         prune_app_size = 0
         prune_use_size = 0
         for node in self._nodes:
-            app_size = node.app_size()
-            # TODO: select app vs use
-            if app_size < small_size:
-                prune_app_size += app_size
-                prune_use_size += node.use_size()
+            node_size = node.app_size() if a_or_u else node.use_size()
+            if node_size < small_size:
+                if a_or_u:
+                    prune_app_size += node_size
+                    prune_use_size += node.use_size()
+                else:
+                    prune_app_size += node.app_size()
+                    prune_use_size += node_size
             else:
                 keep_nodes.append(node)
 
@@ -206,7 +214,7 @@ class DuNode:
         assert prev_use_size == self.use_size(), (
             prev_use_size, self.use_size())
 
-    def merge_upwards_if_smaller_than(self, small_size):
+    def merge_upwards_if_smaller_than(self, small_size, a_or_u):
         """After prune_if_smaller_than is run, we may still have excess
         nodes.
 
@@ -230,7 +238,7 @@ class DuNode:
         prev_app_size = self.app_size()
         prev_use_size = self.use_size()
 
-        small_nodes = self._find_small_nodes(small_size, ())
+        small_nodes = self._find_small_nodes(small_size, (), a_or_u)
         for node, parents in small_nodes:
             # Check immediate grandparent for isdir=None and if it
             # exists, move this there. The isdir=None node is always
@@ -249,16 +257,16 @@ class DuNode:
         assert prev_use_size == self.use_size(), (
             prev_use_size, self.use_size())
 
-    def _find_small_nodes(self, small_size, parents):
+    def _find_small_nodes(self, small_size, parents, a_or_u):
         if self._nodes is None:
-            # TODO: select app vs use
-            if self._app_size < small_size:
+            if (self._use_size, self._app_size)[a_or_u] < small_size:
                 return [(self, parents)]
             return []
 
         ret = []
         for node in self._nodes:
-            ret.extend(node._find_small_nodes(small_size, parents + (self,)))
+            ret.extend(
+                node._find_small_nodes(small_size, parents + (self,), a_or_u))
         return ret
 
     def as_tree(self):
@@ -314,25 +322,26 @@ class DuScan:
         if not path.isdir(self._path or '/'):
             raise OSError('Path {!r} is not a directory'.format(self._path))
 
-    def scan(self):
+    def scan(self, use_apparent_size=True):
         assert self._tree is None
         self._tree = DuNode.new_dir(self._path)
-        self._app_subtotal = 0
-        self._use_subtotal = 0
+        self._app_subtotal = self._use_subtotal = 0
         app_leftover_bytes, use_leftover_bytes, new_fraction, keep_node = (
-            self._scan(self._path, self._tree))
+            self._scan(self._path, self._tree, use_apparent_size))
         assert keep_node and not app_leftover_bytes, (
             keep_node, app_leftover_bytes, use_leftover_bytes)
 
         # Do another prune run, since the fraction size has grown during the
         # scan. Then merge nodes that couldn't get merged sooner.
-        self._tree.prune_if_smaller_than(new_fraction)
-        self._tree.merge_upwards_if_smaller_than(new_fraction)
+        self._tree.prune_if_smaller_than(
+            new_fraction, use_apparent_size)
+        self._tree.merge_upwards_if_smaller_than(
+            new_fraction, use_apparent_size)
         return self._tree
 
-    def _scan(self, pathname, parent_node):
-        # TODO: select app vs use
-        fraction = self._app_subtotal // 20  # initialize fraction
+    def _scan(self, pathname, parent_node, a_or_u):
+        fraction = (  # initialize fraction
+            (self._use_subtotal, self._app_subtotal)[a_or_u] // 20)
         children = []                        # large separate child nodes
 
         try:
@@ -346,12 +355,11 @@ class DuScan:
         else:
             files = [pathname + '/' + file_ for file_ in files]
             app_mixed_total, use_mixed_total, fraction = (
-                self._scan_inner(files, children, fraction))
+                self._scan_inner(files, children, fraction, a_or_u))
 
         # Do we have children or a total that's large enough: keep this
         # node.
-        # TODO: select app vs use
-        if children or app_mixed_total >= fraction:
+        if children or (use_mixed_total, app_mixed_total)[a_or_u] >= fraction:
             parent_node.add_branches(*children)
             if children:
                 child_node = DuNode.new_leftovers(
@@ -367,7 +375,7 @@ class DuScan:
         # Leftovers, the new fraction and whether to keep the child.
         return app_mixed_total, use_mixed_total, fraction, keep_node
 
-    def _scan_inner(self, files, children, fraction):
+    def _scan_inner(self, files, children, fraction, a_or_u):
         app_mixed_total = 0  # "rest of the dir", add to this node
         use_mixed_total = 0
 
@@ -395,8 +403,7 @@ class DuScan:
                     app_size = st.st_size
                     use_size = st.st_blocks << 9
 
-                # TODO: select app vs use
-                if app_size >= fraction:
+                if (use_size, app_size)[a_or_u] >= fraction:
                     child_node = DuNode.new_file(file_, app_size, use_size)
                     children.append(child_node)
                     self._app_subtotal += child_node.app_size()
@@ -413,7 +420,7 @@ class DuScan:
                 child_node = DuNode.new_dir(file_)
 
                 app_leftover_bytes, use_leftover_bytes, fraction, keep_node = (
-                    self._scan(file_, child_node))
+                    self._scan(file_, child_node, a_or_u))
                 if keep_node:
                     assert not app_leftover_bytes, (
                         app_leftover_bytes, use_leftover_bytes)
@@ -460,23 +467,44 @@ def human(value):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.stderr.write('Usage: dutree PATH\n')
+    pathname = None
+    if len(sys.argv) == 2:
+        def getsize(node):
+            return node.app_size()
+
+        pathname = sys.argv[1]
+        use_apparent_size = True
+
+    elif len(sys.argv) == 3:
+        def getsize(node):
+            return node.use_size()
+
+        if sys.argv[1] == '--count-blocks':
+            pathname = sys.argv[2]
+        elif sys.argv[2] == '--count-blocks':
+            pathname = sys.argv[1]
+        use_apparent_size = False
+
+    if pathname is None:
+        sys.stderr.write('Usage: dutree [--count-blocks] PATH\n')
         sys.exit(1)
 
-    def getsize(node):
-        return node.app_size()
-        # return node.use_size()
+    run(pathname, use_apparent_size, getsize)
 
-    pathname = sys.argv[1]
+
+def run(pathname, use_apparent_size, getsize):
+    verbose = True and not use_apparent_size
     scanner = DuScan(pathname)
-    tree = scanner.scan()
+    tree = scanner.scan(use_apparent_size=use_apparent_size)
     for leaf in tree.get_leaves():
-        sys.stdout.write(
-            ' {0:>7s}  {1}\n'.format(human(getsize(leaf)), leaf.name()))
+        sys.stdout.write(' {0:>7s}  {1}{2}\n'.format(
+            human(getsize(leaf)), leaf.name(),
+            (' (app={})'.format(human(leaf.app_size())) if verbose else '')))
     sys.stdout.write('   -----\n')
     size = getsize(tree)
-    sys.stdout.write(' {0:>7s}  TOTAL ({1})\n'.format(human(size), size))
+    sys.stdout.write(' {0:>7s}  TOTAL ({1}{2})\n'.format(
+        human(size), size,
+        ', app={}'.format(human(tree.app_size())) if verbose else ''))
 
 
 def formatwarning(message, category, filename, lineno, line=None):

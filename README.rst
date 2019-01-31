@@ -38,13 +38,16 @@ Annotated output, where only paths of >5% of the total size are shown
 **NOTE**: The directories do not count the size of themselves, only of
 their contents. This explains any discrepancies with ``du -sb`` output.
 
+**NOTE**: On filesystems with built-in compression (like ZFS) or with many
+sparse files, you may want to check the --count-blocks option.
+
 
 Library usage::
 
     >>> from dutree import Scanner
     >>> scanner = Scanner('/srv')
-    >>> tree = scanner.scan()
-    >>> tree.size()
+    >>> tree = scanner.scan(use_apparent_size=True)
+    >>> tree.app_size()
     86558511658
 
     >>> len(tree.get_leaves())
@@ -54,5 +57,5 @@ Library usage::
     >>> leaf0.name()
     '/srv/data/audiofiles/'
 
-    >>> leaf0.size() / (1024.0 * 1024 * 1024)
+    >>> leaf0.app_size() / (1024.0 * 1024 * 1024)
     12.092280263081193
