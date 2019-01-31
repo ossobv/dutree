@@ -56,8 +56,12 @@
 import sys
 import warnings
 
-from os import listdir, lstat
+from os import listdir, lstat, path
 from stat import S_ISDIR, S_ISREG
+
+
+class OsWarning(UserWarning):
+    pass
 
 
 class DuNode:
@@ -288,7 +292,7 @@ class DuScan:
         except OSError as e:
             # PermissionError: [Errno 13] Permission denied:
             #   '/sys/fs/fuse/connections/85'
-            warnings.warn(str(e))
+            warnings.warn(str(e), OsWarning)
             mixed_total = 0
         else:
             files = [path + '/' + file_ for file_ in files]
@@ -323,7 +327,7 @@ class DuScan:
                 #   [Errno 2] No such file or directory: '/proc/14532/fdinfo/3'
                 # Could be EPERM:
                 #   [Errno 13] Permission denied: '/run/user/1000/gvfs'
-                warnings.warn(str(e))
+                warnings.warn(str(e), OsWarning)
                 continue
 
             if S_ISREG(st.st_mode):
@@ -406,6 +410,25 @@ def main():
     sys.stdout.write('   -----\n')
     size = tree.size()
     sys.stdout.write(' {0:>7s}  TOTAL ({1})\n'.format(human(size), size))
+
+
+def formatwarning(message, category, filename, lineno, line=None):
+    """
+    Override default Warning layout, from:
+
+        /PATH/TO/dutree.py:326: UserWarning:
+            [Errno 2] No such file or directory: '/0.d/05.d'
+          warnings.warn(str(e))
+
+    To:
+
+        dutree.py:330: UserWarning:
+            [Errno 2] No such file or directory: '/0.d/05.d'
+    """
+    return '{basename}:{lineno}: {category}: {message}\n'.format(
+        basename=path.basename(filename), lineno=lineno,
+        category=category.__name__, message=message)
+warnings.formatwarning = formatwarning  # noqa
 
 
 if __name__ == '__main__':
