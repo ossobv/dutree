@@ -1,5 +1,5 @@
 # dutree -- a quick and memory efficient disk usage scanner
-# Copyright (C) 2017,2018  Walter Doekes, OSSO B.V.
+# Copyright (C) 2017,2018,2019  Walter Doekes, OSSO B.V.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     long_descriptions = []
     with open(join(dirname(__file__), 'README.rst')) as file:
         long_descriptions.append(file.read())
-    version = '1.4'
+    version = '1.5'
 
     setup(
         name='dutree',

@@ -59,3 +59,16 @@ Library usage::
 
     >>> leaf0.app_size() / (1024.0 * 1024 * 1024)
     12.092280263081193
+
+
+History
+-------
+
+* v1.5
+
+  - **Add apparent vs. real size.**
+    Deprecates ``node.size()``. Use ``node.app_size()`` instead.
+    Get the real used size using ``node.use_size()``.
+    Group by real used size by passing ``use_apparent_size=False`` to
+    ``scan()``.
+  - **Don't die if we cannot enter directories.**
