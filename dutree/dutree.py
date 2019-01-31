@@ -282,12 +282,42 @@ class DuScan:
     def _scan(self, path, parent_node):
         fraction = self._subtotal // 20  # initialize fraction
         children = []               # large separate child nodes
-        mixed_total = 0             # "rest of the dir", add to this node
 
-        for file_ in listdir(path or '/'):
-            fn = path + '/' + file_
+        try:
+            files = listdir(path or '/')
+        except OSError as e:
+            # PermissionError: [Errno 13] Permission denied:
+            #   '/sys/fs/fuse/connections/85'
+            warnings.warn(str(e))
+            mixed_total = 0
+        else:
+            files = [path + '/' + file_ for file_ in files]
+            fraction, mixed_total = self._scan_inner(files, children, fraction)
+
+        # Do we have children or a total that's large enough: keep this
+        # node.
+        if children or mixed_total >= fraction:
+            parent_node.add_branches(*children)
+            if children:
+                child_node = DuNode.new_leftovers(path, mixed_total)
+                parent_node.add_branches(child_node)
+            else:
+                parent_node._filesize = mixed_total
+                del parent_node._nodes
+            mixed_total = 0
+            keep_node = True
+        else:
+            keep_node = False
+
+        # Leftovers, the new fraction and whether to keep the child.
+        return mixed_total, fraction, keep_node
+
+    def _scan_inner(self, files, children, fraction):
+        mixed_total = 0  # "rest of the dir", add to this node
+
+        for file_ in files:
             try:
-                st = lstat(fn)
+                st = lstat(file_)
             except OSError as e:
                 # Could be deleted:
                 #   [Errno 2] No such file or directory: '/proc/14532/fdinfo/3'
@@ -309,7 +339,7 @@ class DuScan:
                     size = st.st_size
 
                 if size >= fraction:
-                    child_node = DuNode.new_file(fn, size)
+                    child_node = DuNode.new_file(file_, size)
                     children.append(child_node)
                     self._subtotal += child_node.size()
                 else:
@@ -319,10 +349,10 @@ class DuScan:
                     self._subtotal += size
 
             elif S_ISDIR(st.st_mode):
-                child_node = DuNode.new_dir(fn)
+                child_node = DuNode.new_dir(file_)
 
                 leftover_bytes, fraction, keep_node = self._scan(
-                    fn, child_node)
+                    file_, child_node)
                 if keep_node:
                     assert not leftover_bytes, leftover_bytes
                     children.append(child_node)
@@ -346,23 +376,7 @@ class DuScan:
             # Recalculate fraction based on updated subtotal.
             fraction = self._subtotal // 20
 
-        # Do we have children or a total that's large enough: keep this
-        # node.
-        if children or mixed_total >= fraction:
-            parent_node.add_branches(*children)
-            if children:
-                child_node = DuNode.new_leftovers(path, mixed_total)
-                parent_node.add_branches(child_node)
-            else:
-                parent_node._filesize = mixed_total
-                del parent_node._nodes
-            mixed_total = 0
-            keep_node = True
-        else:
-            keep_node = False
-
-        # Leftovers, the new fraction and whether to keep the child.
-        return mixed_total, fraction, keep_node
+        return fraction, mixed_total
 
 
 def human(value):
