@@ -87,7 +87,7 @@ class DuScanSeed1Depth4Test(DuScanTestMixin, TestCase):
             ('/1.d/13.d/', 115990023563, 115991371808),
             ('/1.d/*', 672920941814, 672929269576),
             ('/*', 1937174334, 1937179152)]
-        self.assertEquals(self.leaves_as_list(self.tree), expected)
+        self.assertEqual(self.leaves_as_list(self.tree), expected)
 
     def test_tree(self):
         expected = [
@@ -103,13 +103,13 @@ class DuScanSeed1Depth4Test(DuScanTestMixin, TestCase):
              [('/1.d/13.d/', 115990023563, 115991371808)],
              [('/1.d/*', 672920941814, 672929269576)]],
             [('/*', 1937174334, 1937179152)]]
-        self.assertEquals(self.tree_as_list(self.tree), expected)
+        self.assertEqual(self.tree_as_list(self.tree), expected)
 
     def test_leaf_size(self):
-        self.assertEquals(self.fs.get_content_size('/0.d/05.d'), 113273338762)
+        self.assertEqual(self.fs.get_content_size('/0.d/05.d'), 113273338762)
 
     def test_sample_file(self):
-        self.assertEquals(self.fs.stat('/1.d/13.d/15.txt').size, 22344)
+        self.assertEqual(self.fs.stat('/1.d/13.d/15.txt').size, 22344)
 
 
 class DuScanCopeWithDeletionTest(DuScanTestMixin, TestCase):
@@ -154,7 +154,7 @@ class DuScanNoLonelyStarTest(DuScanTestMixin, TestCase):
             ('/08.d/', 891915794716, 891926809312),
             ('/14.d/', 449450186015, 449455589304),
             ('/*', 1050999789708, 1051012439560)]
-        self.assertEquals(self.leaves_as_list(self.tree), expected)
+        self.assertEqual(self.leaves_as_list(self.tree), expected)
 
     def test_tree(self):
         expected = [
@@ -170,7 +170,7 @@ class DuScanNoLonelyStarTest(DuScanTestMixin, TestCase):
             [('/08.d/', 891915794716, 891926809312)],
             [('/14.d/', 449450186015, 449455589304)],
             [('/*', 1050999789708, 1051012439560)]]
-        self.assertEquals(self.tree_as_list(self.tree), expected)
+        self.assertEqual(self.tree_as_list(self.tree), expected)
 
 
 class DuScanNoSlashAndStarTest(DuScanTestMixin, TestCase):
@@ -195,7 +195,7 @@ class DuScanNoSlashAndStarTest(DuScanTestMixin, TestCase):
             ('/20.txt', 65273, 65536),
             ('/23.txt', 45433, 45568),
             ('/*', 166955, 170496)]
-        self.assertEquals(self.leaves_as_list(self.tree), expected)
+        self.assertEqual(self.leaves_as_list(self.tree), expected)
 
 
 class DuScanFindBadExamplesTest(DuScanTestMixin, TestCase):

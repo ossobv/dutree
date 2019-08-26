@@ -76,9 +76,40 @@ class RegularFileNode(Node):
         return '[{:12d}] {}'.format(self.size, self.name)
 
 
+class Python2Random(Random):
+    def seed(self, seed):
+        """
+        Python2 and Python3 compatible seed().
+
+        Python3 seed() takes an optional version. But that version only
+        changes non-int seeds.
+        """
+        assert isinstance(seed, int)  # int seed for "version=1" random seed
+        return super(Python2Random, self).seed(seed)
+
+    def randrange(self, start, stop):
+        """
+        Python2 and Python3 compatible randrange().
+
+        The randrange() in Python was changed, causing randint() to
+        produce different results.
+
+        This one produces the same randrange() on both py2 and py3, even
+        though it might not be an optimal distribution.
+
+        > Changed in version 3.2: randrange() is more sophisticated
+        > about producing equally distributed values. Formerly it used a
+        > style like int(random()*n) which could produce slightly uneven
+        > distributions.
+        """
+        assert isinstance(start, int) and isinstance(stop, int)
+        width = stop - start
+        return int(self.random() * width) + start
+
+
 class GeneratedFilesystem:
     def __init__(self, seed=3, maxdepth=4):
-        self._rand = Random(seed)
+        self._rand = Python2Random(seed)
         self.choice = self._rand.choice
         self.randint = self._rand.randint
 
