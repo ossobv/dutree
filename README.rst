@@ -39,7 +39,8 @@ Annotated output, where only paths of >5% of the total size are shown
 their contents. This explains any discrepancies with ``du -sb`` output.
 
 **NOTE**: On filesystems with built-in compression (like ZFS) or with many
-sparse files, you may want to check the --count-blocks option.
+sparse files, you may want to check the --count-blocks option. This
+should better reflect the actual used size (and align with ``du -sh``).
 
 
 Library usage::
@@ -63,6 +64,13 @@ Library usage::
 
 History
 -------
+
+* v1.6
+
+  - **Fix so the tests work with Python 3 as well.**
+  - **Fix grave bugs with real size.**
+    The real size calculation was wrong sometimes, it raised assertion
+    sometimes and the leaf count would be off sometimes.
 
 * v1.5
 
