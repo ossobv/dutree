@@ -107,13 +107,16 @@ class Python2Random(Random):
         return int(self.random() * width) + start
 
 
-class GeneratedFilesystem:
+class GeneratedFilesystem(object):
+    DirNode = DirNode
+    RegularFileNode = RegularFileNode
+
     def __init__(self, seed=3, maxdepth=4):
         self._rand = Python2Random(seed)
         self.choice = self._rand.choice
         self.randint = self._rand.randint
 
-        self._root = DirNode('ROOT')
+        self._root = self.DirNode('ROOT')
         self._root.generate(self, maxdepth)
 
         self._cache_dict = self.to_dict()
@@ -124,11 +127,11 @@ class GeneratedFilesystem:
 
     def create_dirs(self):
         n = self.how_many_dirs()
-        return [DirNode('{}.d'.format(i)) for i in self.create_unique(n)]
+        return [self.DirNode('{}.d'.format(i)) for i in self.create_unique(n)]
 
     def create_files(self):
         n = self.how_many_files()
-        return [RegularFileNode('{}.txt'.format(i), self.how_large_file())
+        return [self.RegularFileNode('{}.txt'.format(i), self.how_large_file())
                 for i in self.create_unique(n)]
 
     def how_many_dirs(self):

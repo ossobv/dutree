@@ -20,28 +20,29 @@
 #
 from __future__ import print_function
 from unittest import TestCase, main
-from bogofs import GeneratedFilesystem
+from bogofs import GeneratedFilesystem, RegularFileNode as BaseRegularFileNode
 
 import dutree
 
 
 class DuScanTestMixin(object):
     maxDiff = None
+    use_apparent_size = True
 
     @staticmethod
     def debug(self, *args):
         # print(*args)
         pass
 
-    @staticmethod
-    def duscan_tree(fs, path):
+    @classmethod
+    def duscan_tree(cls, fs, path):
         # Mock.
         dutree.listdir = fs.listdir
         dutree.lstat = fs.stat
 
         # Scan.
         scanner = dutree.DuScan(path)
-        tree = scanner.scan()
+        tree = scanner.scan(cls.use_apparent_size)
         return tree
 
     @staticmethod
@@ -76,33 +77,39 @@ class DuScanSeed1Depth4Test(DuScanTestMixin, TestCase):
         self.assertEqual(dutree_size, 2053393838542)
         self.assertEqual(dutree.human(dutree_size), '1.9 T')
 
+        # Also check "used" size
+        dutree_size = self.tree.use_size()
+        self.assertEqual(dutree_size, 2053435198976)
+
     def test_leaves(self):
         expected = [
-            ('/0.d/02.d/', 106577108100, 106578645760),  # not "/0.d/02.d/*"
-            ('/0.d/05.d/', 113273338762, 113274653144),
-            ('/0.d/15.d/', 122711365675, 122713163424),
-            ('/0.d/*', 687973286945, 687981686152),
-            ('/1.d/00.d/', 125037824539, 125039416528),
-            ('/1.d/11.d/', 106972774810, 106974344440),
-            ('/1.d/13.d/', 115990023563, 115991371808),
-            ('/1.d/*', 672920941814, 672929269576),
-            ('/*', 1937174334, 1937179152)]
+            ('/0.d/02.d/', 106577108100, 106579299840),  # not "/0.d/02.d/*"
+            ('/0.d/05.d/', 113273338762, 113275417600),
+            ('/0.d/15.d/', 122711365675, 122714030080),
+            ('/0.d/*', 687973286945, 687986857472),
+            ('/1.d/00.d/', 125037824539, 125040307712),
+            ('/1.d/11.d/', 106972774810, 106974994432),
+            ('/1.d/13.d/', 115990023563, 115992173056),
+            ('/1.d/*', 672920941814, 672934931456),
+            ('/*', 1937174334, 1937187328),
+        ]
         self.assertEqual(self.leaves_as_list(self.tree), expected)
 
     def test_tree(self):
         expected = [
-            ('/', 2053393838542, 2053419729984),
-            [('/0.d/', 1030535099482, 1030548148480),
-             [('/0.d/02.d/', 106577108100, 106578645760)],
-             [('/0.d/05.d/', 113273338762, 113274653144)],
-             [('/0.d/15.d/', 122711365675, 122713163424)],
-             [('/0.d/*', 687973286945, 687981686152)]],
-            [('/1.d/', 1020921564726, 1020934402352),
-             [('/1.d/00.d/', 125037824539, 125039416528)],
-             [('/1.d/11.d/', 106972774810, 106974344440)],
-             [('/1.d/13.d/', 115990023563, 115991371808)],
-             [('/1.d/*', 672920941814, 672929269576)]],
-            [('/*', 1937174334, 1937179152)]]
+            ('/', 2053393838542, 2053435198976),
+            [('/0.d/', 1030535099482, 1030555604992),
+             [('/0.d/02.d/', 106577108100, 106579299840)],
+             [('/0.d/05.d/', 113273338762, 113275417600)],
+             [('/0.d/15.d/', 122711365675, 122714030080)],
+             [('/0.d/*', 687973286945, 687986857472)]],
+            [('/1.d/', 1020921564726, 1020942406656),
+             [('/1.d/00.d/', 125037824539, 125040307712)],
+             [('/1.d/11.d/', 106972774810, 106974994432)],
+             [('/1.d/13.d/', 115990023563, 115992173056)],
+             [('/1.d/*', 672920941814, 672934931456)]],
+            [('/*', 1937174334, 1937187328)],
+        ]
         self.assertEqual(self.tree_as_list(self.tree), expected)
 
     def test_leaf_size(self):
@@ -110,6 +117,13 @@ class DuScanSeed1Depth4Test(DuScanTestMixin, TestCase):
 
     def test_sample_file(self):
         self.assertEqual(self.fs.stat('/1.d/13.d/15.txt').size, 22344)
+
+
+class DuScanSeed1Depth4BlocksTest(DuScanSeed1Depth4Test):
+    """
+    Same test, but this time order by use_size instead of app_size.
+    """
+    use_apparent_size = False
 
 
 class DuScanCopeWithDeletionTest(DuScanTestMixin, TestCase):
@@ -143,33 +157,35 @@ class DuScanNoLonelyStarTest(DuScanTestMixin, TestCase):
 
     def test_leaves(self):
         expected = [
-            ('/00.d/', 962283588169, 962294805152),
-            ('/01.d/', 609253676265, 609261386920),
-            ('/02.d/', 1154398475211, 1154412698600),  # not "/02.d/*"
-            ('/03.d/', 581440911832, 581448326384),
-            ('/04.d/', 644318151446, 644325793376),
-            ('/05.d/', 762422243930, 762431618576),
-            ('/06.d/', 707913056679, 707921539088),
-            ('/07.d/', 531731374526, 531737866464),
-            ('/08.d/', 891915794716, 891926809312),
-            ('/14.d/', 449450186015, 449455589304),
-            ('/*', 1050999789708, 1051012439560)]
+            ('/00.d/', 962283588169, 962302212608),
+            ('/01.d/', 609253676265, 609265658880),
+            ('/02.d/', 1154398475211, 1154421058560),  # not "/02.d/*"
+            ('/03.d/', 581440911832, 581452373504),
+            ('/04.d/', 644318151446, 644330290176),
+            ('/05.d/', 762422243930, 762437644288),
+            ('/06.d/', 707913056679, 707927303168),
+            ('/07.d/', 531731374526, 531741905408),
+            ('/08.d/', 891915794716, 891933202944),
+            ('/14.d/', 449450186015, 449458953728),
+            ('/*', 1050999789708, 1051020292608),
+        ]
         self.assertEqual(self.leaves_as_list(self.tree), expected)
 
     def test_tree(self):
         expected = [
-            ('/', 8346127248497, 8346228872736),
-            [('/00.d/', 962283588169, 962294805152)],
-            [('/01.d/', 609253676265, 609261386920)],
-            [('/02.d/', 1154398475211, 1154412698600)],
-            [('/03.d/', 581440911832, 581448326384)],
-            [('/04.d/', 644318151446, 644325793376)],
-            [('/05.d/', 762422243930, 762431618576)],
-            [('/06.d/', 707913056679, 707921539088)],
-            [('/07.d/', 531731374526, 531737866464)],
-            [('/08.d/', 891915794716, 891926809312)],
-            [('/14.d/', 449450186015, 449455589304)],
-            [('/*', 1050999789708, 1051012439560)]]
+            ('/', 8346127248497, 8346290895872),
+            [('/00.d/', 962283588169, 962302212608)],
+            [('/01.d/', 609253676265, 609265658880)],
+            [('/02.d/', 1154398475211, 1154421058560)],
+            [('/03.d/', 581440911832, 581452373504)],
+            [('/04.d/', 644318151446, 644330290176)],
+            [('/05.d/', 762422243930, 762437644288)],
+            [('/06.d/', 707913056679, 707927303168)],
+            [('/07.d/', 531731374526, 531741905408)],
+            [('/08.d/', 891915794716, 891933202944)],
+            [('/14.d/', 449450186015, 449458953728)],
+            [('/*', 1050999789708, 1051020292608)],
+        ]
         self.assertEqual(self.tree_as_list(self.tree), expected)
 
 
@@ -194,7 +210,8 @@ class DuScanNoSlashAndStarTest(DuScanTestMixin, TestCase):
             ('/18.txt', 53280, 53760),
             ('/20.txt', 65273, 65536),
             ('/23.txt', 45433, 45568),
-            ('/*', 166955, 170496)]
+            ('/*', 166955, 170496),
+        ]
         self.assertEqual(self.leaves_as_list(self.tree), expected)
 
 
@@ -245,6 +262,66 @@ class DuScanFindBadExamplesTest(DuScanTestMixin, TestCase):
                 if self.is_flawed(dirs):
                     print(seed, dirs)
                     break
+
+
+class DuScanCheckDiffUseSizeMixin(DuScanTestMixin):
+    @classmethod
+    def setUpClass(cls):
+        class GeneratedFilesystemWith0ApparentSize(GeneratedFilesystem):
+            class RegularFileNode(BaseRegularFileNode):
+                @property
+                def st_size(self):
+                    if (self.size % 1) == 0:  # "random"
+                        return 0  # apparent size (e.g. 0 size, but N filename)
+                    return self.size
+
+        cls.fs = GeneratedFilesystemWith0ApparentSize(seed=2, maxdepth=2)
+        cls.tree = cls.duscan_tree(cls.fs, '/')
+
+    def test_filesize(self):
+        app_size = self.tree.app_size()
+        use_size = self.tree.use_size()
+        self.assertEqual((app_size, use_size), (1118208, 156755389440))
+
+
+class DuScanCheckAppSizeTest(DuScanCheckDiffUseSizeMixin, TestCase):
+    # Use block_size (st_blocks, False) or of apparent_size (st_size, True).
+    use_apparent_size = True
+
+    def test_leaves(self):
+        expected = [
+            ('/00.d/', 77824, 6106051072),
+            ('/01.d/', 61440, 4128931328),
+            ('/02.d/', 65536, 23433054208),
+            ('/04.d/', 65536, 6112315392),
+            ('/05.d/', 61440, 11056027136),
+            ('/07.d/', 73728, 7656495104),
+            ('/09.d/', 73728, 4791513600),
+            ('/10.d/', 57344, 17843527680),
+            ('/15.d/', 69632, 13243101184),
+            ('/16.d/', 73728, 24704101376),
+            ('/19.d/', 77824, 6117486592),
+            ('/*', 360448, 31562784768),
+        ]
+        self.assertEqual(self.leaves_as_list(self.tree), expected)
+
+
+class DuScanCheckUseSizeTest(DuScanCheckDiffUseSizeMixin, TestCase):
+    # Use block_size (st_blocks, False) or of apparent_size (st_size, True).
+    use_apparent_size = False
+
+    def test_leaves(self):
+        expected = [
+            ('/02.d/14.d/', 0, 13669273600),
+            ('/02.d/*', 65536, 9763780608),
+            ('/05.d/', 61440, 11056027136),
+            ('/10.d/', 57344, 17843527680),
+            ('/14.d/', 36864, 7843903488),
+            ('/15.d/', 69632, 13243101184),
+            ('/16.d/16.d/', 0, 18174032384),
+            ('/*', 827392, 65161743360),
+        ]
+        self.assertEqual(self.leaves_as_list(self.tree), expected)
 
 
 if __name__ == '__main__':

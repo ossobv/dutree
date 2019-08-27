@@ -192,7 +192,7 @@ class DuNode:
             prune_use_size += keep_nodes[-1]._use_size
             keep_nodes = []
 
-        if prune_app_size:
+        if prune_app_size or prune_use_size:
             if not keep_nodes:
                 # The only node to keep, no "leftovers" here. Move data
                 # to the parent.
@@ -407,7 +407,7 @@ class DuScan:
                     child_node = DuNode.new_file(file_, app_size, use_size)
                     children.append(child_node)
                     self._app_subtotal += child_node.app_size()
-                    self._use_subtotal += child_node.app_size()
+                    self._use_subtotal += child_node.use_size()
                 else:
                     # The file is too small and it doesn't get its own
                     # node. Count it on this node.
@@ -436,19 +436,20 @@ class DuScan:
                 # consumes less system time, and (c) it has no python
                 # overhead.
                 app_mixed_total += st.st_size
-                use_mixed_total += st.st_blocks
+                use_mixed_total += st.st_blocks << 9
                 self._app_subtotal += st.st_size
                 self._use_subtotal += st.st_blocks << 9
 
             else:
                 # Also count the whatever-file-this-may-be size (symlink?).
                 app_mixed_total += st.st_size
-                use_mixed_total += st.st_blocks
+                use_mixed_total += st.st_blocks << 9
                 self._app_subtotal += st.st_size
                 self._use_subtotal += st.st_blocks << 9
 
             # Recalculate fraction based on updated subtotal.
-            fraction = self._app_subtotal // 20
+            fraction = (
+                (self._use_subtotal, self._app_subtotal)[a_or_u] // 20)
 
         return app_mixed_total, use_mixed_total, fraction
 
